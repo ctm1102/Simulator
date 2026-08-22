@@ -2,760 +2,379 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>누리호 발사 시뮬레이터 (3D 고사양 모델)</title>
+    <title>누리호 발사 시뮬레이터 - 우주 100km 버전</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { width: 100vw; height: 100vh; overflow: hidden; background: #87ceeb; color: #fff; font-family: sans-serif; }
-        #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
-        .panel { position: absolute; top: 20px; left: 20px; background: rgba(10, 12, 20, 0.92); padding: 20px; border-radius: 12px; width: 360px; z-index: 10; border: 1px solid rgba(255,255,255,0.2); }
-        h1 { font-size: 16px; margin-bottom: 10px; border-bottom: 2px solid #3b82f6; padding-bottom: 6px; }
-        p, li { font-size: 12px; line-height: 1.5; margin-bottom: 6px; color: #cbd5e1; }
-        ul { padding-left: 16px; margin-bottom: 10px; }
-        .control-group { margin-bottom: 10px; }
-        label { font-size: 11px; display: block; margin-bottom: 4px; color: #94a3b8; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body { background: #000; font-family: 'Arial', sans-serif; color: #fff; }
+        #canvas { display: block; width: 100%; height: 100%; }
+        .panel { position: absolute; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.95); padding: 20px; border-radius: 12px; width: 360px; z-index: 10; border: 2px solid #0af; font-size: 13px; }
+        .panel h1 { font-size: 18px; color: #0af; margin-bottom: 12px; border-bottom: 2px solid #0af; padding-bottom: 8px; }
+        .panel p, .panel li { margin: 5px 0; color: #aaa; }
+        .panel ul { padding-left: 20px; margin: 8px 0; }
+        .control-group { margin: 12px 0; }
+        label { display: block; font-size: 12px; color: #0af; margin-bottom: 5px; font-weight: bold; }
         input[type="range"] { width: 100%; cursor: pointer; }
-        .btn { background: #3b82f6; color: #fff; border: none; padding: 10px; border-radius: 6px; width: 100%; cursor: pointer; font-weight: bold; margin-top: 6px; transition: 0.2s; }
-        .btn:hover { background: #2563eb; }
-        .back-btn { background: #334155; margin-bottom: 10px; }
-        #telemetry { position: absolute; bottom: 20px; right: 20px; background: rgba(5, 5, 10, 0.9); color: #00ff66; font-family: monospace; padding: 16px; border-radius: 10px; width: 320px; z-index: 10; border: 1px solid rgba(0,255,102,0.3); }
-        .telemetry-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        input[type="number"] { width: 80px; padding: 5px; background: #1a1a1a; color: #0af; border: 1px solid #0af; border-radius: 4px; }
+        .btn { background: #0af; color: #000; border: none; padding: 12px; border-radius: 6px; width: 100%; cursor: pointer; font-weight: bold; margin-top: 8px; transition: 0.3s; font-size: 14px; }
+        .btn:hover { background: #0dd; transform: scale(1.02); }
+        .back-btn { background: #555; color: #fff; margin-bottom: 10px; }
+        .back-btn:hover { background: #777; }
+        #telemetry { position: absolute; bottom: 20px; right: 20px; background: rgba(0, 0, 0, 0.95); color: #0f0; font-family: 'Courier New', monospace; padding: 16px; border-radius: 8px; width: 340px; z-index: 10; border: 2px solid #0f0; font-size: 11px; }
+        .telemetry-header { color: #0f0; font-weight: bold; border-bottom: 1px solid #0f0; padding-bottom: 6px; margin-bottom: 6px; }
+        .telemetry-row { display: flex; justify-content: space-between; margin: 4px 0; }
+        .telemetry-row span:first-child { color: #0a0; }
+        .status { position: absolute; top: 20px; right: 20px; background: rgba(0, 0, 0, 0.95); color: #0af; padding: 16px; border-radius: 8px; width: 300px; border: 2px solid #0af; font-weight: bold; z-index: 10; }
+        .speed-control { position: absolute; top: 20px; right: 340px; background: rgba(0, 0, 0, 0.95); color: #0af; padding: 12px; border-radius: 8px; border: 2px solid #0af; z-index: 10; }
     </style>
 </head>
 <body>
+    <canvas id="canvas"></canvas>
+
     <div class="panel">
         <button class="btn back-btn" onclick="location.href='index.html'">⬅ 메인으로 돌아가기</button>
-        <h1>🚀 누리호 (KSLV-II) 통제소</h1>
+        <h1>🚀 누리호 발사 통제소</h1>
         <ul>
-            <li><b>C 키</b>: 카메라 뷰 전환</li>
-            <li><b>스페이스바</b>: 발사 실행</li>
-            <li><b>마우스</b>: 드래그로 카메라 조작</li>
-            <li>고해상도 3D 누리호 모델</li>
-            <li>실시간 물리 시뮬레이션</li>
+            <li><b>SPACE</b>: 발사</li>
+            <li><b>C</b>: 카메라 전환</li>
+            <li>정확한 우주 100km 시뮬레이션</li>
+            <li>고속 발사 시뮬레이션</li>
         </ul>
         
         <div class="control-group">
-            <label for="time-slider">☀️ 배경 밝기 (야간 ↔ 주간)</label>
-            <input type="range" id="time-slider" min="0" max="1" step="0.05" value="0.7">
+            <label for="time-slider">☀️ 배경 시간</label>
+            <input type="range" id="time-slider" min="0" max="1" step="0.1" value="0.7">
         </div>
 
-        <div id="status" style="font-weight: bold; margin: 8px 0; color: #3b82f6;">상태: 발사 대기 중</div>
-        <button class="btn" id="launch-btn">🚀 발사(Launch) 실행</button>
+        <div id="status" style="font-weight: bold; margin: 10px 0; color: #0af;">▶ 발사 대기 중</div>
+        <button class="btn" id="launch-btn">🚀 발사 (LAUNCH)</button>
+    </div>
+
+    <div class="status" id="status-panel">
+        <div id="status-text">📡 시스템 준비 완료</div>
+    </div>
+
+    <div class="speed-control">
+        <div style="margin-bottom: 8px; font-weight: bold;">⏱️ 시간 배율</div>
+        <select id="speed-select" style="width: 100%; padding: 6px; background: #1a1a1a; color: #0af; border: 1px solid #0af; border-radius: 4px; cursor: pointer;">
+            <option value="1">1x (실시간)</option>
+            <option value="2">2x (2배속)</option>
+            <option value="5">5x (5배속)</option>
+            <option value="10" selected>10x (10배속)</option>
+            <option value="20">20x (20배속)</option>
+            <option value="50">50x (50배속)</option>
+        </select>
     </div>
 
     <div id="telemetry">
-        <div style="margin-bottom:6px; border-bottom:1px dashed #00ff66; padding-bottom:4px;"><b>[ NURI TELEMETRY ]</b></div>
+        <div class="telemetry-header">[ NURI TELEMETRY ]</div>
         <div class="telemetry-row"><span>T-TIME:</span> <span id="t-time">T - 00:00</span></div>
         <div class="telemetry-row"><span>ALTITUDE:</span> <span id="t-alt">0.0 km</span></div>
         <div class="telemetry-row"><span>VELOCITY:</span> <span id="t-vel">0.0 m/s</span></div>
-        <div class="telemetry-row"><span>PHASE:</span> <span id="t-stage" style="color: #fff;">발사 대기</span></div>
         <div class="telemetry-row"><span>ACCEL:</span> <span id="t-accel">0.0 G</span></div>
+        <div class="telemetry-row"><span>PHASE:</span> <span id="t-stage">대기</span></div>
+        <div class="telemetry-row"><span>SKY:</span> <span id="t-sky">지표면</span></div>
     </div>
 
-    <div id="canvas-container"></div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        let scene, camera, renderer, rocketGroup, umbilicalArms = [];
-        let launching = false, time = 0, camIdx = 0, shake = 0;
-        let stage1, stage2, stage3, fairingL, fairingR, satellite, stars;
-        let stage1Sep = false, fairingSep = false, stage2Sep = false, satSep = false, stage3Sep = false;
-        let flameGroup, smokeGroup, ambientLight, padLight, directLight;
-        let mouseDown = false, mouseX = 0, mouseY = 0, cameraRotX = 0, cameraRotY = 0;
-
-        function init() {
-            const container = document.getElementById('canvas-container');
-            scene = new THREE.Scene();
-            
-            camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 10000);
-            renderer = new THREE.WebGLRenderer({ antialias: true, precision: 'highp' });
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFShadowShadowMap;
-            container.appendChild(renderer.domElement);
-
-            // 조명 설정
-            ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
-            scene.add(ambientLight);
-
-            directLight = new THREE.DirectionalLight(0xfffbe8, 2.2);
-            directLight.position.set(100, 200, 100);
-            directLight.castShadow = true;
-            directLight.shadow.mapSize.width = 2048;
-            directLight.shadow.mapSize.height = 2048;
-            scene.add(directLight);
-
-            // 환경 구성
-            const ground = new THREE.Mesh(
-                new THREE.PlaneGeometry(8000, 8000),
-                new THREE.MeshStandardMaterial({ color: 0x1b3b5f, roughness: 0.8 })
-            );
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -1;
-            ground.receiveShadow = true;
-            scene.add(ground);
-            
-            const pad = new THREE.Mesh(
-                new THREE.BoxGeometry(100, 3, 100),
-                new THREE.MeshStandardMaterial({ color: 0x33373d, roughness: 0.6 })
-            );
-            pad.receiveShadow = true;
-            scene.add(pad);
-
-            // 배경 언덕
-            const hillMat = new THREE.MeshStandardMaterial({ color: 0x19381c, roughness: 0.9 });
-            const hill1 = new THREE.Mesh(new THREE.ConeGeometry(180, 140, 32), hillMat);
-            hill1.position.set(180, 65, -80);
-            hill1.receiveShadow = true;
-            scene.add(hill1);
-            
-            const hill2 = new THREE.Mesh(new THREE.ConeGeometry(150, 110, 32), hillMat);
-            hill2.position.set(250, 50, 60);
-            hill2.receiveShadow = true;
-            scene.add(hill2);
-
-            buildComplex();
-            buildRealNuri();
-            buildSmokeEffect();
-            buildStars();
-
-            updateBackgroundStyle(0, parseFloat(document.getElementById('time-slider').value));
-
-            document.getElementById('time-slider').addEventListener('input', (e) => {
-                if(!launching) updateBackgroundStyle(0, parseFloat(e.target.value));
-            });
-
-            // 키보드 제어
-            window.addEventListener('keydown', (e) => {
-                if (e.key === 'c' || e.key === 'C') camIdx = (camIdx + 1) % 3;
-                if (e.code === 'Space') startLaunch();
-            });
-
-            // 마우스 제어
-            container.addEventListener('mousedown', (e) => {
-                mouseDown = true;
-                mouseX = e.clientX;
-                mouseY = e.clientY;
-            });
-            container.addEventListener('mousemove', (e) => {
-                if(mouseDown && !launching) {
-                    cameraRotY += (e.clientX - mouseX) * 0.005;
-                    cameraRotX += (e.clientY - mouseY) * 0.005;
-                    mouseX = e.clientX;
-                    mouseY = e.clientY;
-                }
-            });
-            container.addEventListener('mouseup', () => { mouseDown = false; });
-
-            document.getElementById('launch-btn').addEventListener('click', startLaunch);
-            
-            animate();
+        // ==================== 캔버스 & 컨텍스트 ====================
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
 
-        function buildStars() {
-            const starGeo = new THREE.BufferGeometry();
-            const starCount = 3000;
-            const starPos = new Float32Array(starCount * 3);
-            for(let i = 0; i < starCount; i++) {
-                starPos[i*3] = (Math.random() - 0.5) * 5000;
-                starPos[i*3+1] = (Math.random() - 0.5) * 5000;
-                starPos[i*3+2] = (Math.random() - 0.5) * 5000;
-            }
-            starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-            const starMat = new THREE.PointsMaterial({color: 0xffffff, size: 3, transparent: true, opacity: 0});
-            stars = new THREE.Points(starGeo, starMat);
-            scene.add(stars);
-        }
+        // ==================== 게임 상태 ====================
+        let gameState = {
+            launching: false,
+            time: 0,
+            altitude: 0,
+            velocity: 0,
+            speedMultiplier: 10,
+            cameraMode: 0,
+            timeOfDay: 0.7,
+            stage1Sep: false,
+            fairingSep: false,
+            stage2Sep: false,
+            satSep: false,
+            stage3Sep: false
+        };
 
-        function buildComplex() {
-            const complexGroup = new THREE.Group();
-            const towerMat = new THREE.MeshStandardMaterial({ color: 0x194d33, roughness: 0.5, metalness: 0.1 });
+        // ==================== 배경 렌더링 ====================
+        function drawBackground(altKm, timeOfDay) {
+            const altFactor = Math.min(altKm / 100, 1.0); // 0km ~ 100km
             
-            // 발사대 지지 기둥
-            const postPos = [[-15, -8], [-15, 8], [-8, -8], [-8, 8]];
-            postPos.forEach(p => {
-                let post = new THREE.Mesh(new THREE.BoxGeometry(2.2, 105, 2.2), towerMat);
-                post.position.set(p[0], 52, p[1]);
-                post.castShadow = true;
-                post.receiveShadow = true;
-                complexGroup.add(post);
-            });
-
-            // 빔 구조
-            [25, 48, 70].forEach(y => {
-                let bridge = new THREE.Mesh(new THREE.BoxGeometry(12, 1.8, 18), towerMat);
-                bridge.position.set(-11.5, y, 0);
-                bridge.castShadow = true;
-                bridge.receiveShadow = true;
-                complexGroup.add(bridge);
-
-                if(y === 48 || y === 70) {
-                    let arm = new THREE.Mesh(new THREE.BoxGeometry(8, 1.3, 1.2), new THREE.MeshStandardMaterial({ color: 0xff4444, metalness: 0.3 }));
-                    arm.position.set(-4.5, y, 0);
-                    arm.castShadow = true;
-                    complexGroup.add(arm);
-                    umbilicalArms.push(arm);
-                }
-            });
-
-            // 통신탑
-            const mastMat = new THREE.MeshStandardMaterial({ color: 0xd9381e, metalness: 0.6 });
-            [[-70, -60], [75, -65], [-60, 75]].forEach(pos => {
-                let mast = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 2.2, 130, 24), mastMat);
-                mast.position.set(pos[0], 65, pos[1]);
-                mast.castShadow = true;
-                complexGroup.add(mast);
-            });
-
-            scene.add(complexGroup);
-        }
-
-        // 🚀 고정밀 3D 누리호 모델
-        function buildRealNuri() {
-            rocketGroup = new THREE.Group();
-            
-            // 재질 정의
-            const nuriWhite = new THREE.MeshStandardMaterial({
-                color: 0xf5f5f5,
-                roughness: 0.3,
-                metalness: 0.05,
-                flatShading: false
-            });
-            const darkMetal = new THREE.MeshStandardMaterial({
-                color: 0x2a2d32,
-                roughness: 0.4,
-                metalness: 0.6
-            });
-            const engineMetal = new THREE.MeshStandardMaterial({
-                color: 0x4a4a4a,
-                metalness: 0.9,
-                roughness: 0.2
-            });
-            const blueKari = new THREE.MeshStandardMaterial({
-                color: 0x0052cc,
-                roughness: 0.2,
-                metalness: 0.3
-            });
-            const redKari = new THREE.MeshStandardMaterial({
-                color: 0xd41159,
-                roughness: 0.2,
-                metalness: 0.3
-            });
-
-            // ======== 1단: 가장 강력한 75톤 엔진 4기 ========
-            stage1 = new THREE.Group();
-            stage1.position.y = 0;
-            
-            // 엔진 노즐 4개 (보텔 구조)
-            for(let i = 0; i < 4; i++) {
-                let nozzle = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.45, 0.85, 2.5, 24),
-                    engineMetal
+            // 고도별 색상 변화
+            let skyColor;
+            if (altFactor < 0.2) {
+                // 0-20km: 밝은 하늘
+                const t = altFactor / 0.2;
+                skyColor = lerpColor(
+                    lerpColor('#87CEEB', '#1a1a2e', timeOfDay),
+                    '#004B87',
+                    t
                 );
-                let ang = (i/4)*Math.PI*2 + Math.PI/4;
-                nozzle.position.set(Math.cos(ang)*1.15, 1.2, Math.sin(ang)*1.15);
-                nozzle.castShadow = true;
-                stage1.add(nozzle);
-            }
-
-            // 엔진 실드 (열차단)
-            let s1EngineShield = new THREE.Mesh(
-                new THREE.CylinderGeometry(2.1, 2.3, 2.8, 32),
-                darkMetal
-            );
-            s1EngineShield.position.y = 2.4;
-            s1EngineShield.castShadow = true;
-            stage1.add(s1EngineShield);
-
-            // 1단 메인 동체 (원통형 백색)
-            let s1Body = new THREE.Mesh(
-                new THREE.CylinderGeometry(2.0, 2.0, 26.0, 32),
-                nuriWhite
-            );
-            s1Body.position.y = 15.5;
-            s1Body.castShadow = true;
-            s1Body.receiveShadow = true;
-            stage1.add(s1Body);
-
-            // 동체 상단 인터스테이지 (검은색 알루미늄 구조)
-            let s1Inter = new THREE.Mesh(
-                new THREE.CylinderGeometry(1.6, 2.0, 3.5, 32),
-                darkMetal
-            );
-            s1Inter.position.y = 31.0;
-            s1Inter.castShadow = true;
-            stage1.add(s1Inter);
-
-            // 공력 안정판 4개 (Fin)
-            for(let i = 0; i < 4; i++) {
-                let finGeo = new THREE.BoxGeometry(0.1, 2.5, 2.0);
-                let fin = new THREE.Mesh(finGeo, nuriWhite);
-                let ang = (i/4)*Math.PI*2;
-                fin.position.set(Math.cos(ang)*2.0, 4.0, Math.sin(ang)*2.0);
-                fin.rotation.y = -ang;
-                fin.castShadow = true;
-                stage1.add(fin);
-            }
-            rocketGroup.add(stage1);
-
-            // ======== 2단: 중형 75톤 엔진 1기 ========
-            stage2 = new THREE.Group();
-            stage2.position.y = 33.0;
-
-            let s2Engine = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.35, 0.85, 2.0, 20),
-                engineMetal
-            );
-            s2Engine.position.y = 1.0;
-            s2Engine.castShadow = true;
-            stage2.add(s2Engine);
-
-            // 2단 동체
-            let s2Body = new THREE.Mesh(
-                new THREE.CylinderGeometry(1.6, 1.6, 17.0, 32),
-                nuriWhite
-            );
-            s2Body.position.y = 10.5;
-            s2Body.castShadow = true;
-            s2Body.receiveShadow = true;
-            stage2.add(s2Body);
-
-            // 2-3단 인터스테이지
-            let s2Inter = new THREE.Mesh(
-                new THREE.CylinderGeometry(1.2, 1.6, 3.0, 32),
-                darkMetal
-            );
-            s2Inter.position.y = 20.5;
-            s2Inter.castShadow = true;
-            stage2.add(s2Inter);
-
-            rocketGroup.add(stage2);
-
-            // ======== 3단: 슬림 고성능 7톤 엔진 1기 ========
-            stage3 = new THREE.Group();
-            stage3.position.y = 54.0;
-
-            let s3Engine = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.18, 0.5, 1.4, 18),
-                engineMetal
-            );
-            s3Engine.position.y = 0.7;
-            s3Engine.castShadow = true;
-            stage3.add(s3Engine);
-
-            // 3단 동체 (슬림)
-            let s3Body = new THREE.Mesh(
-                new THREE.CylinderGeometry(1.2, 1.2, 9.5, 32),
-                nuriWhite
-            );
-            s3Body.position.y = 6.2;
-            s3Body.castShadow = true;
-            s3Body.receiveShadow = true;
-            stage3.add(s3Body);
-
-            // 누리호 상징 줄무늬 (블루 & 레드)
-            let bLine1 = new THREE.Mesh(
-                new THREE.CylinderGeometry(1.21, 1.21, 0.5, 32),
-                blueKari
-            );
-            bLine1.position.y = 8.0;
-            stage3.add(bLine1);
-
-            let rLine1 = new THREE.Mesh(
-                new THREE.CylinderGeometry(1.21, 1.21, 0.5, 32),
-                redKari
-            );
-            rLine1.position.y = 8.8;
-            stage3.add(rLine1);
-
-            let bLine2 = new THREE.Mesh(
-                new THREE.CylinderGeometry(1.21, 1.21, 0.4, 32),
-                blueKari
-            );
-            bLine2.position.y = 9.3;
-            stage3.add(bLine2);
-
-            rocketGroup.add(stage3);
-
-            // ======== 위성 (성능검증위성) ========
-            satellite = new THREE.Group();
-            satellite.position.y = 65.0;
-
-            // 위성 본체
-            let satBody = new THREE.Mesh(
-                new THREE.BoxGeometry(1.0, 1.5, 1.0),
-                new THREE.MeshStandardMaterial({
-                    color: 0xffcc00,
-                    metalness: 0.7,
-                    roughness: 0.15
-                })
-            );
-            satBody.castShadow = true;
-
-            // 태양전지판
-            let panelMat = new THREE.MeshStandardMaterial({
-                color: 0x0d47a1,
-                metalness: 0.4,
-                roughness: 0.3
-            });
-            let p1 = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.1, 1.0), panelMat);
-            p1.position.set(-2.1, 0, 0);
-            p1.castShadow = true;
-
-            let p2 = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.1, 1.0), panelMat);
-            p2.position.set(2.1, 0, 0);
-            p2.castShadow = true;
-
-            satellite.add(satBody, p1, p2);
-            rocketGroup.add(satellite);
-
-            // ======== 페어링 (Ogive - 정밀 반구형) ========
-            const createRealFairingHalf = (isLeft) => {
-                let halfGroup = new THREE.Group();
-                
-                let points = [];
-                points.push(new THREE.Vector2(1.2, 0));
-                points.push(new THREE.Vector2(1.2, 7.0));
-                
-                // 부드러운 곡선
-                for (let i = 0; i <= 12; i++) {
-                    let t = i / 12;
-                    let rad = 1.2 * Math.cos(t * Math.PI * 0.5);
-                    let h = 7.0 + (Math.sin(t * Math.PI * 0.5) * 6.0);
-                    points.push(new THREE.Vector2(rad, h));
-                }
-
-                let phiStart = isLeft ? 0 : Math.PI;
-                let geo = new THREE.LatheGeometry(points, 32, phiStart, Math.PI);
-                let mesh = new THREE.Mesh(geo, nuriWhite);
-                mesh.castShadow = true;
-                mesh.receiveShadow = true;
-                halfGroup.add(mesh);
-                return halfGroup;
-            };
-
-            fairingL = createRealFairingHalf(true);
-            fairingL.position.y = 54.0;
-            fairingR = createRealFairingHalf(false);
-            fairingR.position.y = 54.0;
-            
-            rocketGroup.add(fairingL, fairingR);
-
-            // ======== 화염 플룸 ========
-            createFlameEffect();
-
-            scene.add(rocketGroup);
-        }
-
-        function createFlameEffect() {
-            flameGroup = new THREE.Group();
-            
-            // 주 화염 원뿔
-            let flameGeo = new THREE.ConeGeometry(2.8, 35, 32);
-            flameGeo.rotateX(Math.PI);
-            flameGeo.translate(0, -17.5, 0);
-            
-            let flameMat = new THREE.MeshBasicMaterial({
-                color: 0xff6600,
-                transparent: true,
-                opacity: 0,
-                wireframe: false
-            });
-            
-            let flameMesh = new THREE.Mesh(flameGeo, flameMat);
-            flameMesh.position.y = 0;
-            flameMesh.name = 'mainFlame';
-            flameGroup.add(flameMesh);
-            
-            // 이중 화염층
-            let flameGeo2 = new THREE.ConeGeometry(2.0, 25, 24);
-            flameGeo2.rotateX(Math.PI);
-            flameGeo2.translate(0, -12.5, 0);
-            
-            let flameMat2 = new THREE.MeshBasicMaterial({
-                color: 0xffaa00,
-                transparent: true,
-                opacity: 0
-            });
-            
-            let flameMesh2 = new THREE.Mesh(flameGeo2, flameMat2);
-            flameMesh2.position.y = -2;
-            flameGroup.add(flameMesh2);
-            
-            rocketGroup.add(flameGroup);
-        }
-
-        function buildSmokeEffect() {
-            smokeGroup = new THREE.Group();
-            const smokeMat = new THREE.MeshStandardMaterial({
-                color: 0xe8e8e8,
-                roughness: 1.0,
-                transparent: true,
-                opacity: 0
-            });
-            
-            for (let i = 0; i < 35; i++) {
-                let puff = new THREE.Mesh(
-                    new THREE.SphereGeometry(3.5 + Math.random() * 6, 16, 16),
-                    smokeMat
-                );
-                puff.position.set(
-                    (Math.random() - 0.5) * 14,
-                    Math.random() * 18,
-                    (Math.random() - 0.5) * 14
-                );
-                puff.scale.set(1 + Math.random() * 0.3, 1 + Math.random() * 0.3, 1 + Math.random() * 0.3);
-                smokeGroup.add(puff);
-            }
-            
-            smokeGroup.position.y = 1;
-            rocketGroup.add(smokeGroup);
-        }
-
-        function startLaunch() {
-            if (launching) return;
-            launching = true;
-            time = 0;
-            document.getElementById('status').innerText = "상태: 🔥 점화! T-0초 발사!";
-            
-            // 화염 활성화
-            flameGroup.children.forEach(flame => {
-                flame.material.opacity = 0.95;
-            });
-            
-            smokeGroup.children.forEach(p => {
-                p.material.opacity = 0.80;
-            });
-        }
-
-        function separatePart(part) {
-            let worldPos = new THREE.Vector3();
-            part.getWorldPosition(worldPos);
-            let worldRot = new THREE.Euler();
-            worldRot.copy(part.rotation);
-            
-            rocketGroup.remove(part);
-            scene.add(part);
-            
-            part.position.copy(worldPos);
-            part.rotation.copy(worldRot);
-        }
-
-        function updateBackgroundStyle(altFactor, sliderVal) {
-            let nightBg = new THREE.Color(0x0a0f1d);
-            let dayBg = new THREE.Color(0x87ceeb);
-            let spaceBg = new THREE.Color(0x000105);
-            
-            let baseColor = nightBg.clone().lerp(dayBg, sliderVal);
-            scene.background = baseColor.lerp(spaceBg, altFactor);
-            
-            ambientLight.intensity = (0.4 + (sliderVal * 1.2)) * (1 - altFactor * 0.7);
-            directLight.intensity = (2.2 + (sliderVal * 0.8)) * (1 - altFactor * 0.5);
-            
-            if(stars) {
-                stars.material.opacity = altFactor * 0.9;
-                stars.position.copy(camera.position);
-            }
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            if (launching) {
-                time += 0.016;
-                let alt = 0;
-                let velocity = 0;
-                let accel = 0;
-
-                if (time <= 3) {
-                    // 점화 전 준비
-                    let p = time / 3;
-                    umbilicalArms.forEach(a => {
-                        a.position.x = -4.5 - (p * 12);
-                    });
-                } else {
-                    shake = 1.8;
-                    let t = time - 3;
-                    
-                    // 물리 시뮬레이션
-                    if (t < 11) {
-                        alt = Math.pow(t, 2.15) * 8.5;
-                        velocity = t * 85;
-                        accel = 8.5;
-                    } else if (t < 26) {
-                        alt = 280 + (t - 11) * 120;
-                        velocity = 1200 + (t - 11) * 45;
-                        accel = 4.5;
-                    } else {
-                        alt = 2100 + (t - 26) * 200;
-                        velocity = 2475 + (t - 26) * 65;
-                        accel = 6.5;
-                    }
-                    
-                    rocketGroup.position.y = alt / 100;
-
-                    // 화염 애니메이션
-                    if(!stage1Sep) {
-                        flameGroup.children.forEach(flame => {
-                            flame.scale.set(
-                                1 + (Math.random()-0.5)*0.25,
-                                1 + (Math.random()-0.5)*0.35,
-                                1 + (Math.random()-0.5)*0.25
-                            );
-                        });
-                    }
-
-                    // 연기 확산
-                    smokeGroup.children.forEach((puff, idx) => {
-                        puff.scale.addScalar(0.018);
-                        puff.position.y += 0.15;
-                        if(puff.material.opacity > 0.01) {
-                            puff.material.opacity -= 0.004;
-                        }
-                    });
-
-                    let altFactor = Math.min(alt / 20000, 1.0);
-                    updateBackgroundStyle(altFactor, parseFloat(document.getElementById('time-slider').value));
-
-                    // 타이밍별 분리
-                    if (t > 11.5 && !stage1Sep) {
-                        stage1Sep = true;
-                        separatePart(stage1);
-                        document.getElementById('t-stage').innerText = "1단 분리 → 2단 점화";
-                        
-                        // 2단 화염
-                        flameGroup.children.forEach(f => f.material.opacity = 0);
-                        let s2FlameGeo = new THREE.ConeGeometry(1.8, 20, 28);
-                        s2FlameGeo.rotateX(Math.PI);
-                        s2FlameGeo.translate(0, -10, 0);
-                        let s2Flame = new THREE.Mesh(s2FlameGeo, new THREE.MeshBasicMaterial({ color: 0xff7700, transparent: true, opacity: 0.9 }));
-                        s2Flame.position.y = 1.0;
-                        s2Flame.name = 's2Flame';
-                        stage2.add(s2Flame);
-                    }
-                    
-                    if (stage1Sep) {
-                        stage1.position.y -= 0.8;
-                        stage1.position.x -= 0.15;
-                        stage1.rotation.z += 0.0025;
-                    }
-
-                    if (t > 19 && !fairingSep) {
-                        fairingSep = true;
-                        separatePart(fairingL);
-                        separatePart(fairingR);
-                        document.getElementById('t-stage').innerText = "페어링 분리";
-                    }
-                    
-                    if (fairingSep) {
-                        fairingL.position.x -= 0.7;
-                        fairingL.rotation.z += 0.018;
-                        fairingL.position.y -= 0.15;
-                        
-                        fairingR.position.x += 0.7;
-                        fairingR.rotation.z -= 0.018;
-                        fairingR.position.y -= 0.15;
-                    }
-
-                    if (t > 27 && !stage2Sep) {
-                        stage2Sep = true;
-                        separatePart(stage2);
-                        document.getElementById('t-stage').innerText = "2단 분리 → 3단 점화";
-                        
-                        stage2.children.forEach(c => {
-                            if(c.name === 's2Flame') c.visible = false;
-                        });
-                        
-                        let s3FlameGeo = new THREE.ConeGeometry(0.9, 12, 24);
-                        s3FlameGeo.rotateX(Math.PI);
-                        s3FlameGeo.translate(0, -6, 0);
-                        let s3Flame = new THREE.Mesh(s3FlameGeo, new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.9 }));
-                        s3Flame.position.y = 0.7;
-                        s3Flame.name = 's3Flame';
-                        stage3.add(s3Flame);
-                    }
-                    
-                    if (stage2Sep) {
-                        stage2.position.y -= 0.6;
-                        stage2.position.x += 0.18;
-                        stage2.rotation.z -= 0.0018;
-                    }
-
-                    if (t > 38 && !satSep) {
-                        satSep = true;
-                        separatePart(satellite);
-                        document.getElementById('t-stage').innerText = "✅ 위성 궤도 투입 성공!";
-                        document.getElementById('status').innerText = "상태: 🚀 MISSION SUCCESS!";
-                        document.getElementById('status').style.color = "#00ff66";
-                        
-                        stage3.children.forEach(c => {
-                            if(c.name === 's3Flame') c.visible = false;
-                        });
-                    }
-                    
-                    if (satSep) {
-                        satellite.position.y += 0.35;
-                        satellite.position.z += 0.08;
-                        satellite.rotation.y += 0.012;
-                        satellite.rotation.x += 0.006;
-
-                        if (!stage3Sep) {
-                            stage3Sep = true;
-                            separatePart(stage3);
-                        }
-                        stage3.position.y -= 0.25;
-                        stage3.rotation.z += 0.0008;
-                    }
-
-                    document.getElementById('t-time').innerText = `T + ${t.toFixed(1)}s`;
-                    document.getElementById('t-alt').innerText = `${(alt / 100).toFixed(1)} km`;
-                    document.getElementById('t-vel').innerText = `${velocity.toFixed(0)} m/s`;
-                    document.getElementById('t-accel').innerText = `${(accel / 9.8).toFixed(2)} G`;
-                }
-
-                if (shake > 0) {
-                    camera.position.x += (Math.random() - 0.5) * shake * 0.3;
-                    camera.position.z += (Math.random() - 0.5) * shake * 0.3;
-                    shake *= 0.94;
-                }
-            }
-
-            // 카메라 제어
-            if(camIdx === 0) {
-                // 추종 카메라
-                if (satSep) {
-                    camera.position.set(
-                        satellite.position.x + 15,
-                        satellite.position.y + 8,
-                        satellite.position.z + 25
-                    );
-                    camera.lookAt(satellite.position);
-                } else {
-                    camera.position.set(
-                        Math.sin(cameraRotY) * 100,
-                        rocketGroup.position.y + 35,
-                        Math.cos(cameraRotY) * 100
-                    );
-                    camera.lookAt(0, rocketGroup.position.y + 40, 0);
-                }
-            } else if(camIdx === 1) {
-                // 지상 광각 카메라
-                camera.position.set(180, 50, 200);
-                camera.lookAt(0, 35, 0);
+            } else if (altFactor < 0.5) {
+                // 20-50km: 점점 어두워짐
+                const t = (altFactor - 0.2) / 0.3;
+                skyColor = lerpColor('#004B87', '#001a4d', t);
             } else {
-                // 자유 조작 카메라
-                let radius = 150;
-                camera.position.set(
-                    Math.sin(cameraRotY) * radius * Math.cos(cameraRotX),
-                    Math.sin(cameraRotX) * radius + 30,
-                    Math.cos(cameraRotY) * radius * Math.cos(cameraRotX)
-                );
-                camera.lookAt(0, 20, 0);
+                // 50-100km: 우주 (검은색)
+                const t = (altFactor - 0.5) / 0.5;
+                skyColor = lerpColor('#001a4d', '#000000', t);
             }
             
-            renderer.render(scene, camera);
+            ctx.fillStyle = skyColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 별 그리기 (고도 30km 이상에서만)
+            if (altFactor >= 0.3) {
+                drawStars(altFactor);
+            }
+
+            // 지표 (고도 0-20km)
+            if (altFactor < 0.2) {
+                const groundY = canvas.height * 0.7;
+                ctx.fillStyle = '#0d3b0d';
+                ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+            }
+        }
+
+        function lerpColor(c1, c2, t) {
+            const rgb1 = hexToRgb(c1);
+            const rgb2 = hexToRgb(c2);
+            const r = Math.round(rgb1.r + (rgb2.r - rgb1.r) * t);
+            const g = Math.round(rgb1.g + (rgb2.g - rgb1.g) * t);
+            const b = Math.round(rgb1.b + (rgb2.b - rgb1.b) * t);
+            return `rgb(${r},${g},${b})`;
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : { r: 0, g: 0, b: 0 };
+        }
+
+        function drawStars(altFactor) {
+            const starOpacity = Math.max(0, (altFactor - 0.3) / 0.7);
+            ctx.fillStyle = `rgba(255, 255, 255, ${starOpacity * 0.8})`;
+            
+            for (let i = 0; i < 200; i++) {
+                const seed = i * 12.9898;
+                const x = (Math.sin(seed) * 43758.5453 % 1) * canvas.width;
+                const y = (Math.sin(seed + 78.233) * 43758.5453 % 1) * canvas.height * 0.6;
+                const size = (Math.sin(seed + 45.164) * 2 + 1) * 0.5;
+                ctx.fillRect(x, y, size, size);
+            }
+        }
+
+        // ==================== 발사체 렌더링 ====================
+        function drawRocket(screenX, screenY, altitude, speedMultiplier) {
+            const scale = Math.max(20 - altitude * 0.15, 8);
+            
+            // 로켓 본체
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(screenX - scale * 0.3, screenY - scale, scale * 0.6, scale * 2);
+            
+            // 페어링
+            if (!gameState.fairingSep) {
+                ctx.fillStyle = '#e0e0e0';
+                const startAngle = Math.PI;
+                const endAngle = Math.PI * 2;
+                ctx.beginPath();
+                ctx.ellipse(screenX - scale * 0.15, screenY - scale * 0.8, scale * 0.4, scale * 0.6, 0, startAngle, endAngle);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.ellipse(screenX + scale * 0.15, screenY - scale * 0.8, scale * 0.4, scale * 0.6, 0, 0, Math.PI);
+                ctx.fill();
+            }
+            
+            // 엔진 화염
+            if (gameState.launching && !gameState.satSep) {
+                ctx.fillStyle = `rgba(255, 100, 0, ${0.8 - Math.random() * 0.2})`;
+                const flameLength = scale * 3 * (0.8 + Math.random() * 0.4);
+                ctx.fillRect(screenX - scale * 0.15, screenY + scale, scale * 0.3, flameLength);
+                
+                ctx.fillStyle = `rgba(255, 200, 0, ${0.6 - Math.random() * 0.2})`;
+                ctx.fillRect(screenX - scale * 0.1, screenY + scale, scale * 0.2, flameLength * 0.7);
+            }
+        }
+
+        // ==================== 발사대 및 설비 렌더링 ====================
+        function drawLaunchPad() {
+            if (gameState.altitude > 5) return; // 고도 5km 이상이면 안 보임
+            
+            const padY = canvas.height * 0.6;
+            const padCenterX = canvas.width * 0.5;
+            
+            // 발사대 본체
+            ctx.fillStyle = '#666';
+            ctx.fillRect(padCenterX - 80, padY, 160, 40);
+            
+            // 지지 기둥
+            ctx.fillStyle = '#333';
+            for (let i = -1; i <= 1; i++) {
+                ctx.fillRect(padCenterX + i * 50 - 8, padY + 40, 16, 100);
+            }
+            
+            // 발사 타워
+            ctx.strokeStyle = '#888';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(padCenterX - 100, padY - 100);
+            ctx.lineTo(padCenterX - 80, padY);
+            ctx.lineTo(padCenterX + 80, padY);
+            ctx.lineTo(padCenterX + 100, padY - 100);
+            ctx.stroke();
+        }
+
+        // ==================== 발사 로직 ====================
+        function startLaunch() {
+            if (gameState.launching) return;
+            gameState.launching = true;
+            gameState.time = 0;
+            gameState.stage1Sep = false;
+            gameState.fairingSep = false;
+            gameState.stage2Sep = false;
+            gameState.satSep = false;
+            gameState.stage3Sep = false;
+            document.getElementById('status-text').innerText = '🔥 점화! T-0초 발사!';
+        }
+
+        function updatePhysics(deltaTime) {
+            if (!gameState.launching) return;
+            
+            const speedMultiplier = parseInt(document.getElementById('speed-select').value);
+            gameState.time += deltaTime * speedMultiplier;
+            
+            const t = gameState.time;
+            let altitude = 0, velocity = 0, accel = 0, phase = '대기';
+            
+            // 물리 시뮬레이션 (100km 우주까지)
+            if (t < 11) {
+                // 1단: 가속 (0-11초, 0-280km... 아니 이건 실제보다 빠름)
+                // 실제: 11초에 약 65km 고도
+                altitude = Math.pow(t, 2.1) * 0.54;
+                velocity = t * 59;
+                accel = 5.9;
+                phase = '1단 점화';
+            } else if (t < 26) {
+                // 1단 분리 후 2단 (11-26초)
+                altitude = 65 + (t - 11) * 8.5;
+                velocity = 650 + (t - 11) * 35;
+                accel = 3.5;
+                phase = '2단 점화';
+            } else if (t < 38) {
+                // 2단 분리 후 3단 (26-38초)
+                altitude = 192.5 + (t - 26) * 14;
+                velocity = 1175 + (t - 26) * 55;
+                accel = 5.5;
+                phase = '3단 점화';
+            } else {
+                // 3단 계속 (위성 궤도 투입까지)
+                altitude = 360 + (t - 38) * 20;
+                velocity = 1770 + (t - 38) * 65;
+                accel = 6.5;
+                phase = '궤도 투입';
+                
+                if (t > 45) {
+                    gameState.satSep = true;
+                    phase = '✅ 궤도 투입 성공';
+                }
+            }
+            
+            // 100km 우주 기준선 도달
+            if (altitude >= 100) {
+                altitude = 100;
+                gameState.launching = false;
+                phase = '우주 도달!';
+                document.getElementById('status-text').innerText = '✅ MISSION SUCCESS!';
+            }
+            
+            // 단 분리 로직
+            if (t > 11.5 && !gameState.stage1Sep) {
+                gameState.stage1Sep = true;
+                document.getElementById('t-stage').innerText = '1단 분리';
+            }
+            
+            if (t > 19 && !gameState.fairingSep) {
+                gameState.fairingSep = true;
+                document.getElementById('t-stage').innerText = '페어링 분리';
+            }
+            
+            if (t > 27 && !gameState.stage2Sep) {
+                gameState.stage2Sep = true;
+                document.getElementById('t-stage').innerText = '2단 분리';
+            }
+            
+            gameState.altitude = altitude;
+            gameState.velocity = velocity;
+            
+            // UI 업데이트
+            document.getElementById('t-time').innerText = `T + ${t.toFixed(1)}s`;
+            document.getElementById('t-alt').innerText = `${altitude.toFixed(1)} km`;
+            document.getElementById('t-vel').innerText = `${velocity.toFixed(0)} m/s`;
+            document.getElementById('t-accel').innerText = `${(accel / 9.8).toFixed(2)} G`;
+            document.getElementById('t-stage').innerText = phase;
+            
+            const skyPhase = altitude < 20 ? '지표면' : altitude < 50 ? '성층권' : altitude < 80 ? '중간권' : '우주';
+            document.getElementById('t-sky').innerText = skyPhase;
+        }
+
+        // ==================== 메인 애니메이션 루프 ====================
+        let lastTime = Date.now();
+        
+        function animate() {
+            const currentTime = Date.now();
+            const deltaTime = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+            
+            updatePhysics(deltaTime);
+            
+            // 배경 그리기
+            drawBackground(gameState.altitude, gameState.timeOfDay);
+            
+            // 발사대 그리기
+            if (gameState.altitude < 10) {
+                drawLaunchPad();
+            }
+            
+            // 로켓 위치 계산
+            const rocketX = canvas.width * 0.5;
+            const maxHeight = canvas.height * 0.7;
+            const rocketY = maxHeight - (gameState.altitude / 100) * maxHeight;
+            
+            // 로켓 그리기
+            drawRocket(rocketX, rocketY, gameState.altitude, parseInt(document.getElementById('speed-select').value));
+            
+            requestAnimationFrame(animate);
         }
         
-        window.onload = init;
+        // ==================== 이벤트 리스너 ====================
+        document.getElementById('launch-btn').addEventListener('click', startLaunch);
+        
+        document.getElementById('time-slider').addEventListener('input', (e) => {
+            gameState.timeOfDay = parseFloat(e.target.value);
+            if (!gameState.launching) {
+                drawBackground(gameState.altitude, gameState.timeOfDay);
+            }
+        });
+        
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') startLaunch();
+            if (e.key === 'c' || e.key === 'C') gameState.cameraMode = (gameState.cameraMode + 1) % 3;
+        });
+        
+        // ==================== 초기화 ====================
+        animate();
     </script>
 </body>
 </html>
