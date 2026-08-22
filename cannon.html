@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ctm1102 포물선 운동</title>
+    <style>
+        body { margin: 0; background: #0f111a; color: #fff; font-family: sans-serif; overflow: hidden; }
+        .panel { position: absolute; top: 20px; left: 20px; background: rgba(20,20,30,0.9); padding: 20px; border-radius: 10px; width: 300px; border: 1px solid #333; z-index: 10; }
+        h1 { font-size: 16px; margin-bottom: 12px; border-bottom: 2px solid #ef4444; padding-bottom: 5px; }
+        label { font-size: 12px; display: block; margin-bottom: 5px; color: #94a3b8; }
+        input { width: 100%; margin-bottom: 12px; }
+        .btn { background: #ef4444; color: white; border: none; padding: 10px; border-radius: 5px; width: 100%; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <h1>ctm1102 포물선 운동 제어판</h1>
+        <label>시뮬레이션 속도: <span id="lbl-speed">1.0</span>x</label>
+        <input type="range" id="rng-speed" min="0.1" max="3.0" step="0.1" value="1.0">
+        <label>발사 각도 (°): <span id="lbl-ang">45</span></label>
+        <input type="range" id="rng-ang" min="10" max="85" value="45">
+        <label>초기 속력: <span id="lbl-pow">80</span></label>
+        <input type="range" id="rng-pow" min="20" max="150" value="80">
+        <button class="btn" id="btn-fire">대포 발사</button>
+        <button class="btn" style="background:#374151;" onclick="location.href='index.html'">홈으로 돌아가기</button>
+    </div>
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.onresize = resize; resize();
+
+        let angle = 45, power = 80, simSpeed = 1.0;
+        let balls = [];
+
+        document.getElementById('rng-speed').oninput = (e) => { simSpeed = +e.target.value; document.getElementById('lbl-speed').innerText = simSpeed; };
+        document.getElementById('rng-ang').oninput = (e) => { angle = +e.target.value; document.getElementById('lbl-ang').innerText = angle; };
+        document.getElementById('rng-pow').oninput = (e) => { power = +e.target.value; document.getElementById('lbl-pow').innerText = power; };
+        document.getElementById('btn-fire').onclick = () => {
+            const rad = angle * Math.PI / 180;
+            balls.push({
+                x: 80, y: canvas.height - 80,
+                vx: Math.cos(rad) * (power * 0.25),
+                vy: -Math.sin(rad) * (power * 0.25),
+                trail: []
+            });
+        };
+
+        function loop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const h = canvas.height;
+            ctx.fillStyle = '#1e293b'; ctx.fillRect(0, h - 60, canvas.width, 60);
+
+            ctx.save(); ctx.translate(80, h - 80); ctx.rotate(-angle * Math.PI / 180);
+            ctx.fillStyle = '#475569'; ctx.fillRect(0, -12, 50, 24); ctx.restore();
+
+            for (let i = balls.length - 1; i >= 0; i--) {
+                let b = balls[i];
+                b.trail.push({x: b.x, y: b.y});
+                if (b.trail.length > 30) b.trail.shift();
+
+                b.vy += 0.3 * simSpeed;
+                b.x += b.vx * simSpeed;
+                b.y += b.vy * simSpeed;
+
+                ctx.beginPath();
+                for (let t of b.trail) ctx.lineTo(t.x, t.y);
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)'; ctx.lineWidth = 3; ctx.stroke();
+
+                ctx.beginPath(); ctx.arc(b.x, b.y, 6, 0, Math.PI * 2);
+                ctx.fillStyle = '#ef4444'; ctx.fill();
+
+                if (b.y >= h - 60) balls.splice(i, 1);
+            }
+            requestAnimationFrame(loop);
+        }
+        loop();
+    </script>
+</body>
+</html>

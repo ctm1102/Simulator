@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Physics Lab Dashboard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700&display=swap');
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            background: radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%); 
+            color: #fff; 
+            font-family: 'Pretendard', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        header { text-align: center; margin-bottom: 50px; }
+        header h1 { font-size: 2.5rem; letter-spacing: -1px; margin-bottom: 10px; background: linear-gradient(to right, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        header p { color: #94a3b8; font-size: 1.1rem; }
+
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+            gap: 20px; 
+            width: 100%; 
+            max-width: 900px; 
+        }
+
+        .card { 
+            background: rgba(30, 41, 59, 0.4); 
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 30px; 
+            border-radius: 20px; 
+            text-decoration: none; 
+            color: white; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .card:hover { 
+            transform: translateY(-10px); 
+            border-color: #38bdf8; 
+            background: rgba(30, 41, 59, 0.7);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .card .icon { font-size: 2.5rem; }
+        .card h2 { font-size: 1.4rem; }
+        .card p { font-size: 0.9rem; color: #cbd5e1; line-height: 1.4; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>PHYSICS SIMULATOR LAB</h1>
+        <p>물리 법칙을 직접 시각화하고 제어하세요.</p>
+    </header>
+
+    <div class="grid">
+        <a href="nuri.html" class="card">
+            <div class="icon">🚀</div>
+            <h2>누리호 발사</h2>
+            <p>75톤급 엔진의 강력한 추력과 실시간 궤적 데이터를 시뮬레이션합니다.</p>
+        </a>
+        <a href="pendulum.html" class="card">
+            <div class="icon">⚖️</div>
+            <h2>진자 시뮬레이터</h2>
+            <p>파동진자의 조화로운 움직임과 N중진자의 예측 불가능한 카오스를 탐구합니다.</p>
+        </a>
+        <a href="cannon.html" class="card">
+            <div class="icon">🎯</div>
+            <h2>대포 발사</h2>
+            <p>포물선 운동과 탄도를 계산하여 타겟을 정확하게 조준하세요.</p>
+        </a>
+        <a href="solar.html" class="card">
+            <div class="icon">🪐</div>
+            <h2>태양계 궤도</h2>
+            <p>천체들의 공전 주기와 인력을 바탕으로 태양계 구조를 관찰합니다.</p>
+        </a>
+    </div>
+
+</body>
+</html>
