@@ -26,6 +26,21 @@
         .telemetry-row span:first-child { color: #0a0; }
         .status { position: absolute; top: 20px; right: 20px; background: rgba(0, 0, 0, 0.95); color: #0af; padding: 16px; border-radius: 8px; width: 300px; border: 2px solid #0af; font-weight: bold; z-index: 10; }
         .speed-control { position: absolute; top: 20px; right: 340px; background: rgba(0, 0, 0, 0.95); color: #0af; padding: 12px; border-radius: 8px; border: 2px solid #0af; z-index: 10; }
+        @keyframes vibrate {
+            0%, 100% { transform: translate(0, 0); }
+            10% { transform: translate(-2px, -1px); }
+            20% { transform: translate(2px, 1px); }
+            30% { transform: translate(-1px, 2px); }
+            40% { transform: translate(1px, -2px); }
+            50% { transform: translate(-2px, 1px); }
+            60% { transform: translate(2px, -1px); }
+            70% { transform: translate(-1px, -2px); }
+            80% { transform: translate(1px, 2px); }
+            90% { transform: translate(-2px, -1px); }
+        }
+        #canvas.vibrating {
+            animation: vibrate 0.05s infinite;
+        }
     </style>
 </head>
 <body>
@@ -37,8 +52,8 @@
         <ul>
             <li><b>SPACE</b>: 발사</li>
             <li><b>C</b>: 카메라 전환</li>
-            <li>정확한 우주 100km 시뮬레이션</li>
-            <li>고속 발사 시뮬레이션</li>
+            <li>우주 100km 정확 시뮬</li>
+            <li>초기 고 진동 & 빠른 상승</li>
         </ul>
         
         <div class="control-group">
@@ -101,8 +116,49 @@
             fairingSep: false,
             stage2Sep: false,
             satSep: false,
-            stage3Sep: false
+            stage3Sep: false,
+            vibrationIntensity: 0,
+            smokeParticles: [],
+            exhaustParticles: []
         };
+
+        // ==================== 파티클 시스템 ====================
+        class Particle {
+            constructor(x, y, vx, vy, life, type = 'smoke') {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.life = life;
+                this.maxLife = life;
+                this.type = type;
+                this.size = Math.random() * 30 + 20;
+            }
+
+            update(dt) {
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.life -= dt;
+                this.vy -= 20 * dt; // 상승
+            }
+
+            draw(ctx) {
+                const opacity = Math.max(0, this.life / this.maxLife);
+                
+                if (this.type === 'smoke') {
+                    ctx.fillStyle = `rgba(200, 200, 200, ${opacity * 0.4})`;
+                } else if (this.type === 'hot-exhaust') {
+                    const heatOp = Math.sin(this.life * 10) * 0.3 + 0.3;
+                    ctx.fillStyle = `rgba(255, 150, 0, ${opacity * heatOp})`;
+                } else if (this.type === 'flame-smoke') {
+                    ctx.fillStyle = `rgba(100, 100, 100, ${opacity * 0.5})`;
+                }
+                
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size * (1 - this.life / this.maxLife), 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
 
         // ==================== 배경 렌더링 ====================
         function drawBackground(altKm, timeOfDay) {
@@ -175,7 +231,212 @@
             }
         }
 
-        // ==================== 발사체 렌더링 ====================
+        // ==================== 상세 발사대 렌더링 ====================
+        function drawLaunchPad(rocketX, rocketY) {
+            if (gameState.altitude > 3) return; // 고도 3km 이상이면 안 보임
+            
+            const padY = canvas.height * 0.65;
+            const groundY = canvas.height * 0.7;
+            
+            // ========== 발사대 구조체 ==========
+            
+            // 1. 발사 플랫폼 (콘크리트)
+            ctx.fillStyle = '#555555';
+            ctx.fillRect(rocketX - 120, padY, 240, 50);
+            
+            // 플랫폼 테두리
+            ctx.strokeStyle = '#888888';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(rocketX - 120, padY, 240, 50);
+            
+            // 2. 강철 지지 기둥 (4개)
+            ctx.fillStyle = '#333333';
+            const pillarPositions = [-100, -40, 40, 100];
+            pillarPositions.forEach(offset => {
+                ctx.fillRect(rocketX + offset - 10, padY + 50, 20, 120);
+                // 기둥 음영
+                ctx.fillStyle = '#222222';
+                ctx.fillRect(rocketX + offset + 5, padY + 50, 8, 120);
+                ctx.fillStyle = '#333333';
+            });
+            
+            // 3. 배기 덕트 (배기가 나오는 구멍)
+            ctx.fillStyle = '#1a1a1a';
+            ctx.beginPath();
+            ctx.ellipse(rocketX, padY + 40, 25, 15, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#666666';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // 배기 덕트 내부 (검은색 구멍)
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.ellipse(rocketX, padY + 40, 18, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 4. 발사 타워 (레드 칼라)
+            drawLaunchTower(rocketX, padY - 20);
+            
+            // 5. 엄빌리컬 암 (연료 공급 암)
+            if (!gameState.launching) {
+                ctx.strokeStyle = '#FF6B35';
+                ctx.lineWidth = 8;
+                ctx.beginPath();
+                ctx.moveTo(rocketX - 80, padY - 80);
+                ctx.quadraticCurveTo(rocketX - 50, padY - 40, rocketX - 15, padY - 5);
+                ctx.stroke();
+                
+                // 암 연결부
+                ctx.fillStyle = '#FF6B35';
+                ctx.beginPath();
+                ctx.arc(rocketX - 80, padY - 80, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(rocketX - 15, padY - 5, 8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // 6. 화염 디플렉터 (배기 유도)
+            if (gameState.launching && gameState.time < 2) {
+                drawFlameDeflector(rocketX, padY + 50);
+            }
+            
+            // 7. 발사대 지면 (회색 콘크리트)
+            ctx.fillStyle = '#666666';
+            ctx.fillRect(rocketX - 180, groundY, 360, 50);
+            
+            // 지면 균열 표현
+            ctx.strokeStyle = '#444444';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 8; i++) {
+                ctx.beginPath();
+                ctx.moveTo(rocketX - 150 + i * 40, groundY);
+                ctx.lineTo(rocketX - 150 + i * 40 + 10, groundY + 20);
+                ctx.stroke();
+            }
+        }
+
+        function drawLaunchTower(x, y) {
+            // 타워 본체 (격자 구조)
+            ctx.strokeStyle = '#D9381E';
+            ctx.lineWidth = 4;
+            
+            // 왼쪽 기둥
+            ctx.beginPath();
+            ctx.moveTo(x - 80, y);
+            ctx.lineTo(x - 80, y - 200);
+            ctx.stroke();
+            
+            // 오른쪽 기둥
+            ctx.beginPath();
+            ctx.moveTo(x + 80, y);
+            ctx.lineTo(x + 80, y - 200);
+            ctx.stroke();
+            
+            // 대각선 브레이싱 (X자 모양)
+            for (let i = 0; i < 4; i++) {
+                const startY = y - i * 50;
+                ctx.beginPath();
+                ctx.moveTo(x - 80, startY);
+                ctx.lineTo(x + 80, startY - 50);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(x + 80, startY);
+                ctx.lineTo(x - 80, startY - 50);
+                ctx.stroke();
+            }
+            
+            // 상단 빔
+            ctx.beginPath();
+            ctx.moveTo(x - 80, y - 200);
+            ctx.lineTo(x + 80, y - 200);
+            ctx.stroke();
+            
+            // 타워 상단 플랫폼
+            ctx.fillStyle = '#555555';
+            ctx.fillRect(x - 90, y - 210, 180, 15);
+        }
+
+        function drawFlameDeflector(x, y) {
+            // 배기 유도판 (V자 모양)
+            ctx.strokeStyle = '#FFD700';
+            ctx.lineWidth = 4;
+            ctx.fillStyle = 'rgba(255, 215, 0, 0.2)';
+            
+            // 왼쪽 판
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x - 50, y + 60);
+            ctx.stroke();
+            
+            // 오른쪽 판
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + 50, y + 60);
+            ctx.stroke();
+            
+            // 판 채우기
+            ctx.beginPath();
+            ctx.moveTo(x - 50, y + 60);
+            ctx.lineTo(x, y);
+            ctx.lineTo(x + 50, y + 60);
+            ctx.fill();
+        }
+
+        // ==================== 연기 & 배기 렌더링 ====================
+        function generateExhaust(rocketX, rocketY) {
+            if (gameState.time < 0.5) return; // 발사 직후 0.5초
+            if (gameState.time > 2.5) return; // 2.5초 이후 배기 중단
+            
+            // 뜨거운 배기 (주황색 화염)
+            for (let i = 0; i < 8; i++) {
+                const angle = (Math.random() - 0.5) * 0.4;
+                const speed = 300 + Math.random() * 200;
+                const p = new Particle(
+                    rocketX + (Math.random() - 0.5) * 40,
+                    rocketY + 80,
+                    Math.sin(angle) * speed,
+                    -speed * Math.cos(angle),
+                    1.5 + Math.random() * 1.5,
+                    'hot-exhaust'
+                );
+                gameState.exhaustParticles.push(p);
+            }
+            
+            // 회색 연기
+            for (let i = 0; i < 5; i++) {
+                const angle = (Math.random() - 0.5) * 0.6;
+                const speed = 200 + Math.random() * 150;
+                const p = new Particle(
+                    rocketX + (Math.random() - 0.5) * 50,
+                    rocketY + 100,
+                    Math.sin(angle) * speed,
+                    -speed * Math.cos(angle) * 0.8,
+                    2 + Math.random() * 2,
+                    'flame-smoke'
+                );
+                gameState.smokeParticles.push(p);
+            }
+        }
+
+        function drawExhaust() {
+            // 배기 파티클 그리기
+            gameState.exhaustParticles = gameState.exhaustParticles.filter(p => p.life > 0);
+            gameState.exhaustParticles.forEach(p => {
+                p.update(0.016);
+                p.draw(ctx);
+            });
+            
+            gameState.smokeParticles = gameState.smokeParticles.filter(p => p.life > 0);
+            gameState.smokeParticles.forEach(p => {
+                p.update(0.016);
+                p.draw(ctx);
+            });
+        }
+
+        // ==================== 로켓 렌더링 ====================
         function drawRocket(screenX, screenY, altitude, speedMultiplier) {
             const scale = Math.max(20 - altitude * 0.15, 8);
             
@@ -183,57 +444,47 @@
             ctx.fillStyle = '#f0f0f0';
             ctx.fillRect(screenX - scale * 0.3, screenY - scale, scale * 0.6, scale * 2);
             
+            // 로켓 상단 뾰족한 부분
+            ctx.fillStyle = '#d0d0d0';
+            ctx.beginPath();
+            ctx.moveTo(screenX - scale * 0.3, screenY - scale);
+            ctx.lineTo(screenX + scale * 0.3, screenY - scale);
+            ctx.lineTo(screenX, screenY - scale * 1.4);
+            ctx.fill();
+            
             // 페어링
             if (!gameState.fairingSep) {
-                ctx.fillStyle = '#e0e0e0';
-                const startAngle = Math.PI;
-                const endAngle = Math.PI * 2;
+                ctx.fillStyle = '#e8e8e8';
                 ctx.beginPath();
-                ctx.ellipse(screenX - scale * 0.15, screenY - scale * 0.8, scale * 0.4, scale * 0.6, 0, startAngle, endAngle);
+                ctx.ellipse(screenX - scale * 0.2, screenY - scale * 0.8, scale * 0.45, scale * 0.65, 0, Math.PI, Math.PI * 2);
                 ctx.fill();
                 
                 ctx.beginPath();
-                ctx.ellipse(screenX + scale * 0.15, screenY - scale * 0.8, scale * 0.4, scale * 0.6, 0, 0, Math.PI);
+                ctx.ellipse(screenX + scale * 0.2, screenY - scale * 0.8, scale * 0.45, scale * 0.65, 0, 0, Math.PI);
                 ctx.fill();
             }
             
-            // 엔진 화염
+            // 엔진 분사 (강렬한 화염 + 청백색)
             if (gameState.launching && !gameState.satSep) {
-                ctx.fillStyle = `rgba(255, 100, 0, ${0.8 - Math.random() * 0.2})`;
-                const flameLength = scale * 3 * (0.8 + Math.random() * 0.4);
-                ctx.fillRect(screenX - scale * 0.15, screenY + scale, scale * 0.3, flameLength);
+                // 파란색 코어 화염
+                ctx.fillStyle = `rgba(100, 200, 255, ${0.9 - Math.random() * 0.2})`;
+                const flameLength = scale * 4 * (0.9 + Math.random() * 0.5);
+                ctx.fillRect(screenX - scale * 0.08, screenY + scale, scale * 0.16, flameLength);
                 
-                ctx.fillStyle = `rgba(255, 200, 0, ${0.6 - Math.random() * 0.2})`;
-                ctx.fillRect(screenX - scale * 0.1, screenY + scale, scale * 0.2, flameLength * 0.7);
-            }
-        }
-
-        // ==================== 발사대 및 설비 렌더링 ====================
-        function drawLaunchPad() {
-            if (gameState.altitude > 5) return; // 고도 5km 이상이면 안 보임
-            
-            const padY = canvas.height * 0.6;
-            const padCenterX = canvas.width * 0.5;
-            
-            // 발사대 본체
-            ctx.fillStyle = '#666';
-            ctx.fillRect(padCenterX - 80, padY, 160, 40);
-            
-            // 지지 기둥
-            ctx.fillStyle = '#333';
-            for (let i = -1; i <= 1; i++) {
-                ctx.fillRect(padCenterX + i * 50 - 8, padY + 40, 16, 100);
+                // 주황색 외부 화염
+                ctx.fillStyle = `rgba(255, 120, 0, ${0.7 - Math.random() * 0.2})`;
+                ctx.fillRect(screenX - scale * 0.15, screenY + scale, scale * 0.3, flameLength * 0.9);
+                
+                // 가장 밝은 흰색 코어
+                ctx.fillStyle = `rgba(255, 255, 200, ${0.8 - Math.random() * 0.3})`;
+                ctx.fillRect(screenX - scale * 0.06, screenY + scale, scale * 0.12, flameLength * 0.6);
             }
             
-            // 발사 타워
-            ctx.strokeStyle = '#888';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(padCenterX - 100, padY - 100);
-            ctx.lineTo(padCenterX - 80, padY);
-            ctx.lineTo(padCenterX + 80, padY);
-            ctx.lineTo(padCenterX + 100, padY - 100);
-            ctx.stroke();
+            // 로켓 측면 스트라이프 (한국 국기 색상)
+            ctx.fillStyle = '#0052CC';
+            ctx.fillRect(screenX - scale * 0.25, screenY - scale * 0.5, scale * 0.1, scale * 0.8);
+            ctx.fillStyle = '#D41159';
+            ctx.fillRect(screenX + scale * 0.15, screenY - scale * 0.5, scale * 0.1, scale * 0.8);
         }
 
         // ==================== 발사 로직 ====================
@@ -246,7 +497,11 @@
             gameState.stage2Sep = false;
             gameState.satSep = false;
             gameState.stage3Sep = false;
-            document.getElementById('status-text').innerText = '🔥 점화! T-0초 발사!';
+            gameState.smokeParticles = [];
+            gameState.exhaustParticles = [];
+            gameState.vibrationIntensity = 3.0; // 초기 진동 강도
+            document.getElementById('status-text').innerText = '🔥 점화! 진동 감지!';
+            canvas.classList.add('vibrating');
         }
 
         function updatePhysics(deltaTime) {
@@ -258,36 +513,46 @@
             const t = gameState.time;
             let altitude = 0, velocity = 0, accel = 0, phase = '대기';
             
-            // 물리 시뮬레이션 (100km 우주까지)
-            if (t < 11) {
-                // 1단: 가속 (0-11초, 0-280km... 아니 이건 실제보다 빠름)
-                // 실제: 11초에 약 65km 고도
-                altitude = Math.pow(t, 2.1) * 0.54;
-                velocity = t * 59;
-                accel = 5.9;
+            // 물리 시뮬레이션 (초기 빠른 상승)
+            if (t < 0.5) {
+                // 초기 점화 (0-0.5초) - 진동 최대
+                altitude = Math.pow(t, 1.8) * 0.1;
+                velocity = t * 200; // 빠른 초기 가속
+                accel = 20; // 매우 높은 초기 가속도
+                phase = '점화!';
+                gameState.vibrationIntensity = 3.0 * (1 - t / 0.5);
+            } else if (t < 11) {
+                // 1단: 강력한 가속 (0.5-11초)
+                altitude = 0.05 + Math.pow(t - 0.5, 2) * 0.45;
+                velocity = 200 + (t - 0.5) * 85;
+                accel = 8.5;
                 phase = '1단 점화';
+                gameState.vibrationIntensity = Math.max(0, 1.5 - t * 0.1); // 점차 감소
             } else if (t < 26) {
                 // 1단 분리 후 2단 (11-26초)
-                altitude = 65 + (t - 11) * 8.5;
-                velocity = 650 + (t - 11) * 35;
-                accel = 3.5;
+                altitude = 65 + (t - 11) * 9;
+                velocity = 1100 + (t - 11) * 38;
+                accel = 3.8;
                 phase = '2단 점화';
+                gameState.vibrationIntensity = 0;
             } else if (t < 38) {
                 // 2단 분리 후 3단 (26-38초)
-                altitude = 192.5 + (t - 26) * 14;
-                velocity = 1175 + (t - 26) * 55;
-                accel = 5.5;
+                altitude = 200 + (t - 26) * 15;
+                velocity = 1518 + (t - 26) * 58;
+                accel = 5.8;
                 phase = '3단 점화';
+                gameState.vibrationIntensity = 0;
             } else {
                 // 3단 계속 (위성 궤도 투입까지)
-                altitude = 360 + (t - 38) * 20;
-                velocity = 1770 + (t - 38) * 65;
-                accel = 6.5;
+                altitude = 380 + (t - 38) * 25;
+                velocity = 2122 + (t - 38) * 70;
+                accel = 7.0;
                 phase = '궤도 투입';
                 
                 if (t > 45) {
                     gameState.satSep = true;
                     phase = '✅ 궤도 투입 성공';
+                    canvas.classList.remove('vibrating');
                 }
             }
             
@@ -296,8 +561,21 @@
                 altitude = 100;
                 gameState.launching = false;
                 phase = '우주 도달!';
-                document.getElementById('status-text').innerText = '✅ MISSION SUCCESS!';
+                document.getElementById('status-text').innerText = '✅ MISSION SUCCESS! 우주 진입!';
+                canvas.classList.remove('vibrating');
             }
+            
+            // 진동 적용
+            if (gameState.vibrationIntensity > 0) {
+                if (gameState.vibrationIntensity > 0.1) {
+                    canvas.classList.add('vibrating');
+                } else {
+                    canvas.classList.remove('vibrating');
+                }
+            }
+            
+            // 배기 생성
+            generateExhaust(canvas.width * 0.5, canvas.height * 0.65);
             
             // 단 분리 로직
             if (t > 11.5 && !gameState.stage1Sep) {
@@ -343,14 +621,14 @@
             drawBackground(gameState.altitude, gameState.timeOfDay);
             
             // 발사대 그리기
-            if (gameState.altitude < 10) {
-                drawLaunchPad();
-            }
-            
-            // 로켓 위치 계산
             const rocketX = canvas.width * 0.5;
             const maxHeight = canvas.height * 0.7;
             const rocketY = maxHeight - (gameState.altitude / 100) * maxHeight;
+            
+            drawLaunchPad(rocketX, rocketY);
+            
+            // 배기 및 연기 그리기
+            drawExhaust();
             
             // 로켓 그리기
             drawRocket(rocketX, rocketY, gameState.altitude, parseInt(document.getElementById('speed-select').value));
