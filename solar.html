@@ -3,37 +3,203 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ctm1102 태양계 만들기</title>
+    <title>CTM 태양계 시뮬레이터</title>
     <style>
-        body { margin: 0; background: #050508; color: #fff; font-family: sans-serif; overflow: hidden; }
-        .panel { position: absolute; top: 20px; left: 20px; background: rgba(20,20,30,0.9); padding: 20px; border-radius: 10px; width: 320px; border: 1px solid #333; z-index: 10; }
-        h1 { font-size: 16px; margin-bottom: 10px; border-bottom: 2px solid #f59e0b; padding-bottom: 5px; }
-        p { font-size: 12px; margin-bottom: 10px; color: #94a3b8; }
-        label { font-size: 12px; display: block; margin-bottom: 5px; color: #94a3b8; }
-        input { width: 100%; margin-bottom: 12px; }
-        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 10px; }
-        .p-btn { background: #1e293b; color: #fff; border: 1px solid #334155; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; }
-        .p-btn.selected { background: #f59e0b; border-color: #f59e0b; color: #000; }
-        .btn { background: #ef4444; color: white; border: none; padding: 10px; border-radius: 5px; width: 100%; font-weight: bold; cursor: pointer; margin-top: 5px; }
-        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { width: 100%; height: 100vh; overflow: hidden; background: #050508; }
+        
+        body { color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        
+        .panel { 
+            position: absolute; 
+            top: 20px; 
+            left: 20px; 
+            background: rgba(20,20,30,0.95); 
+            padding: clamp(15px, 3vw, 20px); 
+            border-radius: 10px; 
+            width: clamp(280px, 90vw, 350px);
+            border: 1px solid #333; 
+            z-index: 10;
+            backdrop-filter: blur(10px);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        h1 { 
+            font-size: clamp(14px, 4vw, 18px); 
+            margin-bottom: 10px; 
+            border-bottom: 2px solid #f59e0b; 
+            padding-bottom: 8px; 
+        }
+        
+        p { 
+            font-size: clamp(11px, 2.5vw, 13px); 
+            margin-bottom: 12px; 
+            color: #94a3b8; 
+            line-height: 1.4;
+        }
+        
+        label { 
+            font-size: clamp(11px, 2.5vw, 12px); 
+            display: block; 
+            margin-bottom: 6px; 
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+        
+        input[type="range"] { 
+            width: 100%; 
+            margin-bottom: 15px; 
+            cursor: pointer;
+        }
+        
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); 
+            gap: clamp(6px, 2vw, 8px); 
+            margin-bottom: 15px; 
+        }
+        
+        .p-btn { 
+            background: #1e293b; 
+            color: #fff; 
+            border: 2px solid #334155; 
+            padding: clamp(8px, 2vw, 10px); 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            font-size: clamp(10px, 2.5vw, 12px);
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        
+        .p-btn:hover {
+            border-color: #f59e0b;
+            background: #2a2a3a;
+        }
+        
+        .p-btn.selected { 
+            background: #f59e0b; 
+            border-color: #f59e0b; 
+            color: #000;
+            transform: scale(1.05);
+        }
+        
+        .btn { 
+            background: #ef4444; 
+            color: white; 
+            border: none; 
+            padding: clamp(8px, 2vw, 12px); 
+            border-radius: 6px; 
+            width: 100%; 
+            font-weight: bold; 
+            cursor: pointer; 
+            margin-top: 8px;
+            font-size: clamp(11px, 2.5vw, 13px);
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+        
+        .btn.home {
+            background: #374151;
+        }
+        
+        .btn.home:hover {
+            background: #4b5563;
+        }
+        
+        #canvas-container { 
+            width: 100%; 
+            height: 100%; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+        }
+        
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(20,20,30,0.95);
+            padding: clamp(12px, 3vw, 16px);
+            border-radius: 10px;
+            width: clamp(200px, 90vw, 300px);
+            border: 1px solid #333;
+            backdrop-filter: blur(10px);
+            font-size: clamp(11px, 2.5vw, 12px);
+            z-index: 10;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            color: #cbd5e1;
+        }
+        
+        .info-label {
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            .panel {
+                top: 10px;
+                left: 10px;
+            }
+            
+            .info-panel {
+                bottom: 10px;
+                right: 10px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="panel">
-        <h1>ctm1102 태양계 만들기 제어판</h1>
-        <p>행성을 선택한 뒤 우주 공간을 클릭하여 배치하세요.</p>
-        <label>공전 속도 조절: <span id="lbl-speed">1.0</span>x</label>
+        <h1>☀️ 태양계 시뮬레이터</h1>
+        <p>행성을 선택하고 우주 공간을 클릭하여 배치하세요. 중력으로 공전합니다!</p>
+        
+        <label>공전 속도: <span id="lbl-speed">1.0</span>x</label>
         <input type="range" id="rng-speed" min="0.1" max="3.0" step="0.1" value="1.0">
+        
+        <label style="margin-top: 10px;">행성 선택:</label>
         <div class="grid">
-            <button class="p-btn selected" onclick="setPlanet('수성', 0.8, 0xd1d5db)">수성</button>
-            <button class="p-btn" onclick="setPlanet('금성', 1.3, 0xfde047)">금성</button>
-            <button class="p-btn" onclick="setPlanet('지구', 1.4, 0x3b82f6)">지구</button>
-            <button class="p-btn" onclick="setPlanet('화성', 1.1, 0xef4444)">화성</button>
-            <button class="p-btn" onclick="setPlanet('목성', 3.0, 0xf97316)">목성</button>
-            <button class="p-btn" onclick="setPlanet('토성', 2.6, 0xfacc15)">토성</button>
+            <button class="p-btn selected" onclick="setPlanet('수성', 0.38, 0x8c7853)">🪨 수성</button>
+            <button class="p-btn" onclick="setPlanet('금성', 0.95, 0xfdb813)">☁️ 금성</button>
+            <button class="p-btn" onclick="setPlanet('지구', 1.0, 0x4a90e2)">🌍 지구</button>
+            <button class="p-btn" onclick="setPlanet('화성', 0.53, 0xe74c3c)">🔴 화성</button>
+            <button class="p-btn" onclick="setPlanet('목성', 2.5, 0xc88b3a)">🪐 목성</button>
+            <button class="p-btn" onclick="setPlanet('토성', 2.1, 0xfad5a5)">💫 토성</button>
+            <button class="p-btn" onclick="setPlanet('천왕성', 1.5, 0x4fd0e7)">🔵 천왕성</button>
+            <button class="p-btn" onclick="setPlanet('해왕성', 1.4, 0x4169e1)">🌊 해왕성</button>
         </div>
-        <button class="btn" id="btn-clear">모든 행성 초기화</button>
-        <button class="btn" style="background:#374151;" onclick="location.href='index.html'">홈으로 돌아가기</button>
+        
+        <button class="btn" id="btn-clear">초기화</button>
+        <button class="btn home" onclick="location.href='index.html'">홈으로</button>
+    </div>
+
+    <div class="info-panel">
+        <div class="info-row">
+            <span class="info-label">태양:</span>
+            <span id="info-sun">활성</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">행성 수:</span>
+            <span id="info-planets">0</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">속도 배율:</span>
+            <span id="info-speed">1.0x</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">카메라:</span>
+            <span id="info-camera">상단 뷰</span>
+        </div>
     </div>
 
     <div id="canvas-container"></div>
@@ -41,51 +207,106 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         let scene, camera, renderer, sun, planets = [];
-        let selRadius = 0.8, selColor = 0xd1d5db, simSpeed = 1.0;
+        let selRadius = 0.38, selColor = 0x8c7853, simSpeed = 1.0;
+        let cameraMode = 0;
 
         function init() {
             const container = document.getElementById('canvas-container');
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x050508);
+            scene.background = new THREE.Color(0x000408);
+
+            // 반응형 카메라
+            function updateCamera() {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                
+                if (camera) {
+                    camera.aspect = width / height;
+                    camera.updateProjectionMatrix();
+                }
+                
+                if (renderer) {
+                    renderer.setSize(width, height);
+                }
+            }
 
             camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 2000);
-            camera.position.set(0, 80, 120);
-            camera.lookAt(0, 0, 0);
+            setCameraPosition();
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
             container.appendChild(renderer.domElement);
 
-            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-            scene.add(new THREE.PointLight(0xffffff, 2.0, 500));
+            window.addEventListener('resize', updateCamera);
 
-            sun = new THREE.Mesh(new THREE.SphereGeometry(7, 32, 32), new THREE.MeshBasicMaterial({color: 0xffaa00}));
+            // 조명
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.PointLight(0xffffff, 2.0, 1000);
+            sunLight.position.set(0, 0, 0);
+            scene.add(sunLight);
+
+            // 태양 (실제 크기 비율)
+            sun = new THREE.Mesh(
+                new THREE.SphereGeometry(8, 32, 32),
+                new THREE.MeshStandardMaterial({ 
+                    color: 0xfdb813,
+                    emissive: 0xff8800,
+                    emissiveIntensity: 0.8,
+                    roughness: 0.7
+                })
+            );
             scene.add(sun);
 
-            document.getElementById('rng-speed').oninput = (e) => { simSpeed = +e.target.value; document.getElementById('lbl-speed').innerText = simSpeed; };
+            // 별들 배경
+            addStars();
+
+            // 컨트롤
+            document.getElementById('rng-speed').oninput = (e) => { 
+                simSpeed = +e.target.value; 
+                document.getElementById('lbl-speed').innerText = simSpeed.toFixed(1);
+                document.getElementById('info-speed').innerText = simSpeed.toFixed(1) + 'x';
+            };
 
             const raycaster = new THREE.Raycaster();
             const mouse = new THREE.Vector2();
 
             container.addEventListener('click', (e) => {
-                if (e.clientX > 350 || e.clientY > 360) {
-                    const rect = container.getBoundingClientRect();
-                    mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
-                    mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+                const rect = container.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+                
+                // 패널이 아닌 영역을 클릭했는지 확인
+                const panelWidth = Math.max(280, Math.min(window.innerWidth * 0.3, 350));
+                if (clickX > panelWidth + 20 || clickY > 400) {
+                    mouse.x = (clickX / container.clientWidth) * 2 - 1;
+                    mouse.y = -(clickY / container.clientHeight) * 2 + 1;
                     raycaster.setFromCamera(mouse, camera);
                     const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
                     const target = new THREE.Vector3();
                     raycaster.ray.intersectPlane(plane, target);
                     if (target) {
                         const dist = Math.sqrt(target.x**2 + target.z**2);
-                        if (dist > 12) {
+                        if (dist > 15) {
                             const mesh = new THREE.Mesh(
                                 new THREE.SphereGeometry(selRadius, 24, 24),
-                                new THREE.MeshStandardMaterial({color: selColor, roughness: 0.5})
+                                new THREE.MeshStandardMaterial({ 
+                                    color: selColor, 
+                                    roughness: 0.6,
+                                    metalness: 0.2
+                                })
                             );
                             mesh.position.set(target.x, 0, target.z);
                             scene.add(mesh);
-                            planets.push({ mesh, dist, angle: Math.atan2(target.z, target.x), speed: (0.02 / Math.sqrt(dist / 20)) });
+                            planets.push({ 
+                                mesh, 
+                                dist, 
+                                angle: Math.atan2(target.z, target.x), 
+                                speed: (0.02 / Math.sqrt(dist / 25)) 
+                            });
+                            updatePlanetCount();
                         }
                     }
                 }
@@ -94,28 +315,94 @@
             document.getElementById('btn-clear').onclick = () => {
                 planets.forEach(p => scene.remove(p.mesh));
                 planets = [];
+                updatePlanetCount();
             };
 
+            // 카메라 전환 (스페이스바)
+            window.addEventListener('keydown', (e) => {
+                if (e.code === 'Space') {
+                    cameraMode = (cameraMode + 1) % 3;
+                    setCameraPosition();
+                }
+            });
+
+            updatePlanetCount();
             animate();
         }
 
-        window.setPlanet = function(name, radius, color, dist) {
-            selRadius = radius; selColor = color;
+        function addStars() {
+            const starGeometry = new THREE.BufferGeometry();
+            const starCount = 1000;
+            const starPositions = new Float32Array(starCount * 3);
+
+            for (let i = 0; i < starCount; i++) {
+                starPositions[i * 3] = (Math.random() - 0.5) * 1000;
+                starPositions[i * 3 + 1] = (Math.random() - 0.5) * 1000;
+                starPositions[i * 3 + 2] = (Math.random() - 0.5) * 1000;
+            }
+
+            starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+            const starMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.5,
+                sizeAttenuation: true
+            });
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
+        }
+
+        function setCameraPosition() {
+            if (!camera) return;
+            
+            switch(cameraMode) {
+                case 0: // 상단 뷰
+                    camera.position.set(0, 150, 0);
+                    camera.lookAt(0, 0, 0);
+                    document.getElementById('info-camera').innerText = '상단 뷰';
+                    break;
+                case 1: // 측면 뷰
+                    camera.position.set(150, 50, 0);
+                    camera.lookAt(0, 0, 0);
+                    document.getElementById('info-camera').innerText = '측면 뷰';
+                    break;
+                case 2: // 3D 뷰
+                    camera.position.set(100, 80, 100);
+                    camera.lookAt(0, 0, 0);
+                    document.getElementById('info-camera').innerText = '3D 뷰';
+                    break;
+            }
+        }
+
+        window.setPlanet = function(name, radius, color) {
+            selRadius = radius;
+            selColor = color;
             document.querySelectorAll('.p-btn').forEach(b => {
-                b.classList.toggle('selected', b.innerText === name);
+                b.classList.toggle('selected', b.innerText.includes(name.substring(0, 2)));
             });
         };
 
+        function updatePlanetCount() {
+            document.getElementById('info-planets').innerText = planets.length;
+        }
+
         function animate() {
             requestAnimationFrame(animate);
+            
+            // 태양 회전
             sun.rotation.y += 0.005 * simSpeed;
+            sun.rotation.x += 0.001 * simSpeed;
+            
+            // 행성 공전
             planets.forEach(p => {
                 p.angle += p.speed * simSpeed;
                 p.mesh.position.x = Math.cos(p.angle) * p.dist;
                 p.mesh.position.z = Math.sin(p.angle) * p.dist;
+                p.mesh.rotation.y += 0.01 * simSpeed;
             });
+            
             renderer.render(scene, camera);
         }
+
         window.onload = init;
     </script>
 </body>
